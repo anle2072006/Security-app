@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>⚡ SecLab — Web Security Demo</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+  <div class="logo">⚡ SECURITY<span>WEB</span></div>
+  <span class="header-sub">Web Security & Vulnerability Demo</span>
+  <nav class="header-nav">
+    <a href="https://owasp.org" target="_blank">OWASP ↗</a>
+    <a href="https://csp-evaluator.withgoogle.com" target="_blank">CSP Tool ↗</a>
+  </nav>
+</header>
+
+<div class="container">
+
+  <!-- ── Sidebar ── -->
+  <aside>
+    <div class="aside-label">Overview</div>
+    <div class="aside-section">
+      <button class="nav-item active" onclick="show('owasp')">
+        <span class="nav-dot" style="background:#f85149"></span> OWASP Top 10
+      </button>
+    </div>
+
+    <div class="aside-label">Attack Types</div>
+    <div class="aside-section">
+      <button class="nav-item" onclick="show('xss')">
+        <span class="nav-dot" style="background:#d29922"></span> XSS
+      </button>
+      <button class="nav-item" onclick="show('sqli')">
+        <span class="nav-dot" style="background:#f85149"></span> SQL Injection
+      </button>
+      <button class="nav-item" onclick="show('csrf')">
+        <span class="nav-dot" style="background:#bc8cff"></span> CSRF
+      </button>
+    </div>
+
+    <div class="aside-label">Defenses</div>
+    <div class="aside-section">
+      <button class="nav-item" onclick="show('csp')">
+        <span class="nav-dot" style="background:#3fb950"></span> CSP
+      </button>
+      <button class="nav-item" onclick="show('headers')">
+        <span class="nav-dot" style="background:#58a6ff"></span> Security Headers
+      </button>
+    </div>
+  </aside>
+
+  <!-- ── Main Content ── -->
+  <main>
+
+    <!-- OWASP TOP 10 -->
+    <section id="sec-owasp" class="section active">
+      <div class="section-title">🛡 OWASP Top 10</div>
+      <div class="section-desc">
+        Danh sách 10 lỗ hổng bảo mật web nghiêm trọng nhất, được OWASP tổng hợp từ data của hàng nghìn tổ chức.
+        Là chuẩn tham chiếu cho mọi developer và security engineer.
+      </div>
+      <div class="owasp-grid" id="owaspGrid"></div>
+      <div id="owaspDetail"></div>
+    </section>
+
+    <!-- XSS -->
+    <section id="sec-xss" class="section">
+      <div class="section-title">💉 Cross-Site Scripting (XSS)</div>
+      <div class="section-desc">
+        Kẻ tấn công inject JavaScript độc hại vào trang web. Script chạy trong browser của nạn nhân —
+        đánh cắp cookie, session token, keylog, redirect trang.
+      </div>
+
+      <div class="info-box red">
+        <div class="info-title">⚡ Attack Flow</div>
+        Attacker gửi input chứa <code>&lt;script&gt;</code> hoặc event handler
+        → Server lưu vào DB hoặc reflect về
+        → Browser parse HTML → Script thực thi → <strong>Game over</strong>
+      </div>
+
+      <h3 class="sub-title">Demo: Reflected XSS</h3>
+      <div class="split">
+        <!-- Vulnerable panel -->
+        <div class="panel">
+          <div class="panel-head vuln">❌ Vulnerable</div>
+          <div class="panel-body">
+            <pre>// Node.js + Express
+app.get('/search', (req, res) =&gt; {
+  const q = req.query.q;
+  // ❌ Inject thẳng vào HTML
+  res.send(`&lt;p&gt;Kết quả: <span class="hl-bad">${q}</span>&lt;/p&gt;`);
+});</pre>
+            <div class="demo-area">
+              <span class="demo-label">Nhập search query (thử XSS payload):</span>
+              <input type="text" id="xssInput" value='&lt;img src=x onerror="alert(document.cookie)"&gt;' />
+              <div class="btns">
+                <button class="btn btn-red" onclick="demoXSSVuln()">⚡ Simulate Attack</button>
+                <button class="btn btn-gray" onclick="loadXSSPayload(1)">Payload #2</button>
+                <button class="btn btn-gray" onclick="loadXSSPayload(2)">Payload #3</button>
+              </div>
+              <div class="output" id="xssVulnOut">Output sẽ hiển thị ở đây...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Hardened panel -->
+        <div class="panel">
+          <div class="panel-head safe">✅ Hardened</div>
+          <div class="panel-body">
+            <pre>// ✅ Escape HTML entities
+function escapeHtml(s) {
+  return s
+   .replace(/&amp;/g, '&amp;amp;')
+   .replace(/&lt;/g,  '&amp;lt;')
+   .replace(/&gt;/g,  '&amp;gt;')
+   .replace(/"/g,   '&amp;quot;')
+   .replace(/'/g,   '&amp;#x27;');
+}
+
+app.get('/search', (req, res) =&gt; {
+  const q = <span class="hl-good">escapeHtml(req.query.q)</span>;
+  res.send(`&lt;p&gt;Kết quả: ${q}&lt;/p&gt;`);
+});</pre>
+            <div class="demo-area">
+              <span class="demo-label">Same payload — escaped output:</span>
+              <input type="text" id="xssInputSafe" value='&lt;img src=x onerror="alert(document.cookie)"&gt;' />
+              <div class="btns">
+                <button class="btn btn-green" onclick="demoXSSSafe()">✅ Show Hardened Output</button>
+              </div>
+              <div class="output" id="xssSafeOut">Output sẽ hiển thị ở đây...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <h3 class="sub-title">Các loại XSS</h3>
+      <table>
+        <tr><th>Loại</th><th>Cơ chế</th><th>Ví dụ</th></tr>
+        <tr>
+          <td><span class="badge badge-red">Reflected</span></td>
+          <td>Payload trong URL → server reflect về ngay</td>
+          <td>Link lừa: <code>?q=&lt;script&gt;...&lt;/script&gt;</code></td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-red">Stored</span></td>
+          <td>Payload lưu vào DB → hiển thị cho mọi user</td>
+          <td>Comment box, username field</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-yellow">DOM-based</span></td>
+          <td>Payload xử lý bởi client-side JS, không qua server</td>
+          <td><code>document.write(location.hash)</code></td>
+        </tr>
+      </table>
+
+      <div class="info-box green" style="margin-top:1rem;">
+        <div class="info-title">🛡 Prevention Checklist</div>
+        ✓ Escape output HTML (dùng template engine auto-escape: React JSX, Jinja2)<br>
+        ✓ Validate &amp; whitelist input<br>
+        ✓ Content Security Policy (CSP) — block inline scripts<br>
+        ✓ Cookie: <code>HttpOnly</code> + <code>Secure</code> + <code>SameSite=Strict</code><br>
+        ✓ Dùng <code>textContent</code> thay vì <code>innerHTML</code> trong JS
+      </div>
+    </section>
+
+    <!-- SQL INJECTION -->
+    <section id="sec-sqli" class="section">
+      <div class="section-title">🗄 SQL Injection</div>
+      <div class="section-desc">
+        Kẻ tấn công chèn SQL code vào input để thao túng database query.
+        Hậu quả: bypass authentication, dump toàn bộ dữ liệu, xóa bảng, thậm chí RCE.
+      </div>
+
+      <div class="split">
+        <!-- Vulnerable -->
+        <div class="panel">
+          <div class="panel-head vuln">❌ Vulnerable — String concat</div>
+          <div class="panel-body">
+            <pre>// ❌ Nối string thẳng vào query
+const query =
+  "SELECT * FROM users " +
+  "WHERE username = '" + <span class="hl-bad">username</span> + "' " +
+  "AND password = '" + <span class="hl-bad">password</span> + "'";</pre>
+            <div class="demo-area">
+              <span class="demo-label">Username (thử: <code>admin' --</code> hoặc <code>' OR '1'='1</code>):</span>
+              <input type="text" id="sqliUser" value="admin' --" />
+              <span class="demo-label">Password:</span>
+              <input type="password" id="sqliPass" value="wrongpassword" />
+              <div class="btns">
+                <button class="btn btn-red" onclick="demoSQLI()">⚡ Inject Attack</button>
+                <button class="btn btn-gray" onclick="loadSQLPayload(0)">OR bypass</button>
+                <button class="btn btn-gray" onclick="loadSQLPayload(1)">UNION dump</button>
+              </div>
+              <div class="output" id="sqliOut">Query sẽ hiển thị ở đây...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Hardened -->
+        <div class="panel">
+          <div class="panel-head safe">✅ Hardened — Parameterized</div>
+          <div class="panel-body">
+            <pre>// ✅ Prepared statement (mysql2)
+const sql =
+  "SELECT * FROM users " +
+  "WHERE username = <span class="hl-good">?</span> " +
+  "AND password = <span class="hl-good">?</span>";
+
+db.execute(sql, <span class="hl-good">[username, password]</span>);
+
+// ✅ Hoặc dùng ORM (Prisma)
+await prisma.user.findFirst({
+  where: { username, password }
+});</pre>
+            <div class="demo-area">
+              <span class="demo-label">Same payload — parameterized:</span>
+              <input type="text" id="sqliUserSafe" value="admin' --" />
+              <div class="btns">
+                <button class="btn btn-green" onclick="demoSQLISafe()">✅ Show Safe Query</button>
+              </div>
+              <div class="output" id="sqliSafeOut">Query sẽ hiển thị ở đây...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <h3 class="sub-title">Common payloads</h3>
+      <table>
+        <tr><th>Payload</th><th>Mục đích</th><th>Kết quả</th></tr>
+        <tr>
+          <td><code>' OR '1'='1' --</code></td>
+          <td>Bypass login</td>
+          <td>WHERE luôn true → lấy tất cả users</td>
+        </tr>
+        <tr>
+          <td><code>admin' --</code></td>
+          <td>Login as admin không cần password</td>
+          <td>Comment bỏ phần AND password</td>
+        </tr>
+        <tr>
+          <td><code>' UNION SELECT table_name,2 FROM information_schema.tables --</code></td>
+          <td>Dump schema</td>
+          <td>Liệt kê tên tất cả bảng trong DB</td>
+        </tr>
+        <tr>
+          <td><code>'; DROP TABLE users; --</code></td>
+          <td>Xóa dữ liệu</td>
+          <td>Xóa toàn bộ bảng users</td>
+        </tr>
+      </table>
+    </section>
+
+    <!-- CSRF -->
+    <section id="sec-csrf" class="section">
+      <div class="section-title">🎭 CSRF — Cross-Site Request Forgery</div>
+      <div class="section-desc">
+        Kẻ tấn công lừa browser của người dùng đã đăng nhập gửi request tới server mà không có sự đồng ý.
+        Browser tự động đính kèm cookie → server tin là request hợp lệ.
+      </div>
+
+      <h3 class="sub-title" style="margin-bottom:12px;">Attack Flow:</h3>
+      <div class="flow">
+        <div class="flow-node">User login bank.com</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node victim">Visit evil.com</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node attacker">Hidden form auto-submit</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node server">POST bank.com/transfer</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node attacker">Money transferred! 💸</div>
+      </div>
+
+      <div class="split">
+        <div class="panel">
+          <div class="panel-head vuln">❌ evil.com/attack.html</div>
+          <div class="panel-body">
+            <pre>&lt;body onload="document.forms[0].submit()"&gt;
+
+&lt;form action="https://bank.com/transfer"
+      method="POST"&gt;
+  &lt;input type="hidden"
+    name="to_account"
+    value="<span class="hl-bad">attacker_acc</span>"/&gt;
+  &lt;input type="hidden"
+    name="amount"
+    value="<span class="hl-bad">50000000</span>"/&gt;
+&lt;/form&gt;</pre>
+            <div class="info-box red">
+              <div class="info-title">⚡ Tại sao thành công?</div>
+              Browser tự gửi session cookie của bank.com khi POST →
+              Server không phân biệt được request từ bank.com hay evil.com
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head safe">✅ CSRF Token Defense</div>
+          <div class="panel-body">
+            <pre>// Server dùng csurf middleware
+const csrf = require('csurf');
+app.use(csrf({ cookie: true }));
+
+// Template nhúng token ẩn
+&lt;form action="/transfer" method="POST"&gt;
+  &lt;input type="hidden"
+    name="_csrf"
+    value="<span class="hl-good">{{ csrfToken() }}</span>"/&gt;
+&lt;/form&gt;
+
+// Cookie config
+res.cookie('session', token, {
+  <span class="hl-good">httpOnly: true,
+  secure: true,
+  sameSite: 'Strict'</span>
+});</pre>
+            <div class="info-box green">
+              <div class="info-title">✅ Tại sao an toàn?</div>
+              evil.com không biết CSRF token (random, per-session) →
+              không thể forge request. <code>SameSite=Strict</code> block cookie cross-site.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="info-box blue">
+        <div class="info-title">🛡 Defense Strategies</div>
+        <strong>1. CSRF Tokens</strong> — random token per session, validate mỗi state-changing request<br>
+        <strong>2. SameSite Cookie</strong> — <code>SameSite=Strict/Lax</code> ngăn cookie gửi cross-site<br>
+        <strong>3. Double Submit Cookie</strong> — gửi token cả trong cookie và request body<br>
+        <strong>4. Custom header</strong> — AJAX: <code>X-Requested-With: XMLHttpRequest</code>
+      </div>
+    </section>
+
+    <!-- CSP -->
+    <section id="sec-csp" class="section">
+      <div class="section-title">📋 Content Security Policy (CSP)</div>
+      <div class="section-desc">
+        HTTP response header khai báo policy tài nguyên cho browser.
+        Là lớp bảo vệ thứ 2 — nếu XSS xảy ra, CSP ngăn script độc hại chạy và connect ra ngoài.
+      </div>
+
+      <div class="panel" style="margin-bottom:1.5rem;">
+        <div class="panel-head" style="background:var(--bg3); color:var(--purple);">📄 Ví dụ CSP Header (Express + Helmet)</div>
+        <div class="panel-body">
+          <pre>const helmet = require('helmet');
+
+app.use(helmet.contentSecurityPolicy({
+  directives: {
+    <span class="hl-good">defaultSrc</span>:  ["'self'"],
+    <span class="hl-good">scriptSrc</span>:   ["'self'", "https://cdn.jsdelivr.net"],
+    <span class="hl-good">styleSrc</span>:    ["'self'", "https://fonts.googleapis.com"],
+    <span class="hl-good">imgSrc</span>:      ["'self'", "data:", "https:"],
+    <span class="hl-good">connectSrc</span>:  ["'self'", "https://api.myapp.com"],
+    <span class="hl-good">objectSrc</span>:   ["'none'"],
+    <span class="hl-good">frameAncestors</span>: ["'none'"],
+    <span class="hl-good">upgradeInsecureRequests</span>: [],
+    <span class="hl-good">reportUri</span>:   ["/csp-report"],
+  },
+}));</pre>
+        </div>
+      </div>
+
+      <h3 class="sub-title">Các directive quan trọng:</h3>
+      <div class="panel" style="margin-bottom:1.5rem;">
+        <div class="panel-body" style="padding:0.5rem 1rem;">
+          <div class="csp-row"><span class="csp-key">default-src</span><span class="csp-val">'self'</span><span class="csp-note">Fallback cho mọi resource type chưa khai báo</span></div>
+          <div class="csp-row"><span class="csp-key">script-src</span><span class="csp-val">'self' cdn.js.net</span><span class="csp-note">Kiểm soát nguồn script. Tránh <code>'unsafe-inline'</code></span></div>
+          <div class="csp-row"><span class="csp-key">style-src</span><span class="csp-val">'self' fonts.google.com</span><span class="csp-note">Whitelist CSS sources</span></div>
+          <div class="csp-row"><span class="csp-key">img-src</span><span class="csp-val">'self' data: https:</span><span class="csp-note">Cho phép image từ HTTPS và data URI</span></div>
+          <div class="csp-row"><span class="csp-key">connect-src</span><span class="csp-val">'self' api.myapp.com</span><span class="csp-note">Kiểm soát fetch, XHR, WebSocket</span></div>
+          <div class="csp-row"><span class="csp-key">object-src</span><span class="csp-val" style="color:var(--red)">'none'</span><span class="csp-note">Block Flash/plugins — luôn set 'none'</span></div>
+          <div class="csp-row"><span class="csp-key">frame-ancestors</span><span class="csp-val" style="color:var(--red)">'none'</span><span class="csp-note">Ngăn Clickjacking (thay thế X-Frame-Options)</span></div>
+          <div class="csp-row"><span class="csp-key">report-uri</span><span class="csp-val">/csp-violations</span><span class="csp-note">Browser gửi report khi vi phạm CSP</span></div>
+        </div>
+      </div>
+
+      <div class="split">
+        <div class="info-box red">
+          <div class="info-title">❌ Không có CSP</div>
+          Nếu XSS xảy ra, script có thể load từ bất kỳ domain, gọi bất kỳ API, đánh cắp toàn bộ dữ liệu
+        </div>
+        <div class="info-box green">
+          <div class="info-title">✅ Có CSP + XSS xảy ra</div>
+          Browser block script không có nonce/hash, block kết nối ra ngoài whitelist → thiệt hại bị giới hạn tối đa
+        </div>
+      </div>
+
+      <div class="info-box blue" style="margin-top:1rem;">
+        <div class="info-title">🔗 Tools kiểm tra CSP</div>
+        → <a href="https://csp-evaluator.withgoogle.com" target="_blank">csp-evaluator.withgoogle.com</a> — Google CSP Evaluator<br>
+        → <a href="https://securityheaders.com" target="_blank">securityheaders.com</a> — Scan toàn bộ security headers của domain
+      </div>
+    </section>
+
+    <!-- SECURITY HEADERS -->
+    <section id="sec-headers" class="section">
+      <div class="section-title">🔒 Security Headers</div>
+      <div class="section-desc">
+        Các HTTP response header bổ sung giúp browser bật thêm lớp bảo vệ.
+        Cấu hình bằng <code>helmet</code> (Node.js) hoặc trong web server (Nginx/Apache).
+      </div>
+
+      <div class="panel" style="margin-bottom:1.5rem;">
+        <div class="panel-head safe">✅ Helmet.js — bật tất cả 1 dòng</div>
+        <div class="panel-body">
+          <pre>const helmet = require('helmet');
+app.use(helmet()); // Bật tất cả security headers mặc định</pre>
+        </div>
+      </div>
+
+      <table>
+        <tr><th>Header</th><th>Giá trị khuyên dùng</th><th>Tác dụng</th></tr>
+        <tr>
+          <td><code>Strict-Transport-Security</code></td>
+          <td><code>max-age=31536000; includeSubDomains</code></td>
+          <td>Bắt buộc HTTPS, chống SSL stripping</td>
+        </tr>
+        <tr>
+          <td><code>X-Content-Type-Options</code></td>
+          <td><code>nosniff</code></td>
+          <td>Ngăn MIME sniffing</td>
+        </tr>
+        <tr>
+          <td><code>X-Frame-Options</code></td>
+          <td><code>DENY</code></td>
+          <td>Chống Clickjacking</td>
+        </tr>
+        <tr>
+          <td><code>Referrer-Policy</code></td>
+          <td><code>strict-origin-when-cross-origin</code></td>
+          <td>Kiểm soát thông tin Referer</td>
+        </tr>
+        <tr>
+          <td><code>Permissions-Policy</code></td>
+          <td><code>camera=(), microphone=(), geolocation=()</code></td>
+          <td>Disable browser API nhạy cảm</td>
+        </tr>
+        <tr>
+          <td><code>Cache-Control</code></td>
+          <td><code>no-store</code></td>
+          <td>Ngăn browser cache dữ liệu nhạy cảm</td>
+        </tr>
+      </table>
+
+      <div class="info-box yellow" style="margin-top:1.5rem;">
+        <div class="info-title">⚠ Lưu ý quan trọng</div>
+        Security headers là <strong>defense in depth</strong> — lớp bổ sung, không thay thế việc fix lỗ hổng ở code.
+        Luôn ưu tiên fix root cause (escape output, parameterized query) trước.
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script src="main.js"></script>
+</body>
+</html>
